@@ -1,0 +1,12 @@
+*.pdf
+2Lpngs
+*.log
+*.out
+*.pdf
+*.synctex.gz
+plots.synctex.gz
+plots.tex
+prepost.csv
+*.root
+*.aux
+*.txt
