@@ -48,7 +48,7 @@ def reportChisq_mc(data,mc,mc_err,countThreshold,nuisances): #run w.r.t MC error
     chidf = chidf.loc[ chidf['expected'] > countThreshold]
     SelectedBins = chidf.shape[0]
     chi2 = chidf['ratio'].sum() 
-    chi2ndf = chi2/(float(SelectedBins) - float(nuisances))
+    chi2ndf = chi2/(float(SelectedBins))
     pvalue = 1- stats.chi2.cdf(chi2,SelectedBins)
     #round everything 
     print('{0: <12}'.format(round(chi2,1)), '{0: <12}'.format(round(chi2ndf,1)), '{0: <12}'.format(round(pvalue,2)), '{0: <12}'.format(SelectedBins), '{0: <12}'.format(TotalBins))
@@ -65,7 +65,8 @@ def getResiduals(RegionName,BinNumber,data,data_error,expected,expected_error,co
     res['expected'] = expected
     res['data_err'] = data_error
     res['exp_err'] = expected_error
-    res = res.loc[ res['observed'] <= countThreshold]
+    #res = res.loc[ res['observed'] <= countThreshold]
+    res = res.loc[ res['expected'] <= countThreshold]
     res = res.loc[ res['expected'] > (10e-5) ]#remove extraneous bins created by diagnostic 
     res['diff'] = res['observed'] - res['expected']
     res['O-E/E'] = res['diff']/res['exp_err']
