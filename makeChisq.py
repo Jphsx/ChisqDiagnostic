@@ -161,10 +161,10 @@ def evaluate_Chisqs(df,mode,countThreshold,n_nuisances):
 
 #####################################################################start
 #DEFINE N NUISANCE
-n_nuisances=16
+n_nuisances=146
 #####
 
-print("------------------Evaluating all 2L bins------------------")
+print("------------------Evaluating all bins------------------")
 evaluate_Chisqs(df,0,countThreshold,n_nuisances)
 df['RegionName'],df['BinNumber'],df['data'],df['data_err'],df['bpostfit'],df['bpostfit_err'],countThreshold
 makePlot(df['RegionName'],df['BinNumber'],df['data'],df['data_err'],df['bprefit'],df['bprefit_err'],99999999,2,"all2Lpre.pdf")
@@ -172,11 +172,37 @@ makePlot(df['RegionName'],df['BinNumber'],df['data'],df['data_err'],df['bpostfit
 #slice up our df and look at smaller pieces
 #create rank column
 df['Rank'] = df['RegionSplit'].apply( lambda x:x[2] )
+df['NLep'] = df['RegionSplit'].apply( lambda x:x[0] )
+
+print('\n')
+print("------------------all 0L bins------------------")
+L0 = df.loc[ df['NLep'] == 'Ch0L' ]
+evaluate_Chisqs(L0,0,countThreshold,n_nuisances)
+
+print('\n')
+print("------------------all 1L bins------------------")
+L1 = df.loc[ df['NLep'] == 'Ch1L' ]
+evaluate_Chisqs(L1,0,countThreshold,n_nuisances)
+
+
+print('\n')
+print("------------------all 2L bins------------------")
+L2 = df.loc[ df['NLep'] == 'Ch2L' ]
+evaluate_Chisqs(L2,0,countThreshold,n_nuisances)
+
+
+print('\n')
+print("------------------all 3L bins------------------")
+L3 = df.loc[ df['NLep'] == 'Ch3L' ]
+evaluate_Chisqs(L3,0,countThreshold,n_nuisances)
+
+
 print('\n')
 print("------------------Evaluating all gold bins------------------")
 dfgold = df.loc[ df['Rank'] == 'gold' ]
 evaluate_Chisqs(dfgold,0,countThreshold,n_nuisances)
 
+'''
 #create criteria 1 column 'Lepton configuration'
 dfgold['Lconfig'] = dfgold['RegionSplit'].apply( lambda x:x[1] )
 print('\n')
@@ -225,11 +251,13 @@ evaluate_Chisqs(j1s,0,countThreshold,n_nuisances)
 print('\n')
 print("------------------Evaluating 2j gold bins------------------")
 evaluate_Chisqs(j2s,0,countThreshold,n_nuisances)
-
+'''
+print('\n')
 print("Evaluating all silver bins")
 dfslvr = df.loc[ df['Rank'] == 'slvr' ]
 evaluate_Chisqs(dfslvr,0,countThreshold,n_nuisances)
 
+print('\n')
 print("Evaluating all bronze bins")
 dfbron = df.loc[ df['Rank'] == 'bron' ]
 evaluate_Chisqs(dfbron,0,countThreshold,n_nuisances)
