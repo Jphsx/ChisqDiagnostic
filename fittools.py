@@ -4,7 +4,7 @@ from scipy import stats
 import glob
 import math
 import sys
-
+import ROOT as rt
 import csv
 
 
@@ -15,8 +15,9 @@ def getStatus(df,countThreshold,n_nuisances):
 	totalMCpre = df['bprefit'].sum()
 	totalMCpost = df['bpostfit'].sum()
 	totalD = df['data'].sum()
-	print("Prefit: Total Expected:",round(totalMCpre),"Total Observed:",totalD,"O-E=",round(totalD-totalMCpre),"nuisances= 0")
-	print("Postfit: Total Expected:",round(totalMCpost),"Total Observed:",totalD,"O-E=",round(totalD-totalMCpost),"nuisances= ",n_nuisances)
+	print('{0: <12}'.format(" "),'{0: <12}'.format("Expected"), '{0: <12}'.format("Observed"), '{0: <12}'.format("O-E"), '{0: <12}'.format("Nuisances") )
+	print('{0: <12}'.format("Prefit"), '{0: <12}'.format(round(totalMCpre)),'{0: <12}'.format(totalD), '{0: <12}'.format(round(totalD-totalMCpre)),'{0: <12}'.format("0"))
+	print('{0: <12}'.format("Postfit"),'{0: <12}'.format(round(totalMCpost)), '{0: <12}'.format(totalD),'{0: <12}'.format(round(totalD-totalMCpost)), '{0: <12}'.format(n_nuisances))
     
 def getChisq(df, countThreshold,n_nuisances):
 	chidf = pd.DataFrame()
@@ -27,9 +28,10 @@ def getChisq(df, countThreshold,n_nuisances):
 	chidf['variance_post'] = df['bpostfit_err']
 	chidf['variance_pre'] = chidf['variance_pre'].apply(lambda x:x*x)
 	chidf['variance_post'] = chidf['variance_post'].apply(lambda x:x*x)
+
     
     
-    #chipre = chidf.loc[ chidf['expected_pre'] > (10e-5) ]
+	chidf = chidf.loc[ chidf['expected_pre'] > (10e-5) ]
 	TotalBins = chidf.shape[0]
 	chipre = chidf.loc[ chidf['expected_pre'] > countThreshold]
 	chipost = chidf.loc[ chidf['expected_post'] > countThreshold]
@@ -57,19 +59,19 @@ def getChisq(df, countThreshold,n_nuisances):
 	chi2postNDF = chi2post/(float(SelectedBins_post))
 	pvalue_post = 1- stats.chi2.cdf(chi2post,SelectedBins_post)
     
-	print("Prefit Chi2  (O-E)^2 / E")
-	print('{0: <12}'.format("Chisq"), '{0: <12}'.format("Chisq/NDF"), '{0: <12}'.format("P-val"),end='')
-	print('{0: <12}'.format("Selected Bins"), '{0: <12}'.format("Total Bins"))
-	print('{0: <12}'.format(round(chi2pre,1)), '{0: <12}'.format(round(chi2preNDF,1)), '{0: <12}'.format(round(pvalue_pre,2)), '{0: <12}'.format(SelectedBins_pre), '{0: <12}'.format(TotalBins))
-	print("Postfit Chi2 (O-E)^2 / E")
-	print('{0: <12}'.format("Chisq"), '{0: <12}'.format("Chisq/NDF"), '{0: <12}'.format("P-val"),end='')
-	print('{0: <12}'.format("Selected Bins"), '{0: <12}'.format("Total Bins"))
-	print('{0: <12}'.format(round(chi2post,1)), '{0: <12}'.format(round(chi2postNDF,1)), '{0: <12}'.format(round(pvalue_post,2)), '{0: <12}'.format(SelectedBins_post), '{0: <12}'.format(TotalBins))
+	print("Chi2  (O-E)^2 / E")
+	print('{0: <12}'.format(" "),'{0: <12}'.format("Chisq"), '{0: <12}'.format("Chisq/NDF"), '{0: <12}'.format("P-val"),end='')
+	print('{0: <12}'.format("Selected Bins"), '{0: <12}'.format("Total Bins"), '{0: <12}'.format("Threshold"))
+	print('{0: <12}'.format("Prefit"),'{0: <12}'.format(round(chi2pre,1)), '{0: <12}'.format(round(chi2preNDF,1)), '{0: <12}'.format(round(pvalue_pre,2)), '{0: <12}'.format(SelectedBins_pre), '{0: <12}'.format(TotalBins), '{0: <12}'.format(countThreshold))
+
+
+	print('{0: <12}'.format("Postfit"),'{0: <12}'.format(round(chi2post,1)), '{0: <12}'.format(round(chi2postNDF,1)), '{0: <12}'.format(round(pvalue_post,2)), '{0: <12}'.format(SelectedBins_post), '{0: <12}'.format(TotalBins), '{0: <12}'.format(countThreshold))
 
 def getPLike(df):
 	poissondf = pd.DataFrame()
 	poissondf['observed'] = df['data']
 	poissondf['expected'] = df['bprefit']
+	poissondf = poissondf.loc[ poissondf['expected'] > (10e-5) ]
 	poissondf['loglam'] = np.log(poissondf['expected'])
 	poissondf['kloglam'] = (-1)* poissondf['observed']*poissondf['loglam']    
 	poissondf['logL'] =  poissondf['kloglam'] + poissondf['expected']
@@ -77,23 +79,27 @@ def getPLike(df):
 	
 	poissondf = pd.DataFrame()
 	poissondf['observed'] = df['data']
+	poissondf['expected'] = df['bprefit']
+	poissondf = poissondf.loc[ poissondf['expected'] > (10e-5) ]
 	poissondf['expected'] = df['bpostfit']
 	poissondf['loglam'] = np.log(poissondf['expected'])
 	poissondf['kloglam'] = (-1)* poissondf['observed']*poissondf['loglam']    
 	poissondf['logL'] =  poissondf['kloglam'] + poissondf['expected']
 	sumLogLpost = poissondf['logL'].sum()
 	
-	print("Prefit -LogLikelihood")
-	print('{0: <12}'.format(round(-sumLogLpre,1)))
-	print("Postfit -LogLikelihood")
-	print('{0: <12}'.format(round(-sumLogLpost,1)))
+	print("-LogL  E-O*logE")
+	print('{0: <12}'.format(" "),'{0: <12}'.format("-LogL"))
+	print('{0: <12}'.format("Prefit"),'{0: <12}'.format(round(-sumLogLpre,1)))
+	
+	print('{0: <12}'.format("Postfit"),'{0: <12}'.format(round(-sumLogLpost,1)))
 	
 def getPull(df):
 	res = df
 	res = res.loc[ res['bprefit'] > (10e-5) ]#remove extraneous bins created by diagnostic 
 	res['Pre_O-E/sqrt(E)'] = (res['data'] - res['bprefit'])/ res['bprefit']**(1./2.)
 	res['Pull_O-E/sqrt(E-VF)'] = (res['data'] - res['bpostfit'])/ ( res['bpostfit'] - res['bpostfit_err']**2 )**(1./2.)
-	res = res[['RegionName','BinNumber','Pre_O-E/sqrt(E)','Pull_O-E/sqrt(E-VF)','data','bprefit','bpostfit']]
+	res['Post_O-E/sqrt(E)'] = (res['data'] - res['bpostfit'])/  res['bpostfit']**(1./2.)
+	res = res[['RegionName','BinNumber','Pre_O-E/sqrt(E)','Pull_O-E/sqrt(E-VF)','Post_O-E/sqrt(E)','data','bprefit','bpostfit']]
     
 	print('Top 10 Leading normalized residuals sorted by pull') 
 	res = res.sort_values(by='Pull_O-E/sqrt(E-VF)', key=pd.Series.abs, ascending=False)
@@ -102,9 +108,71 @@ def getPull(df):
 	res = res.sort_values(by='Pre_O-E/sqrt(E)',key=pd.Series.abs, ascending=False)
 	print(res[:10])
     
-def analyzedf(df, countThreshold, n_nuisances):
+def getPlots(df,tfile,tag):
+	rt.gStyle.SetOptFit(1)
+	hpre = rt.TH1D("hpre"+tag, "Prefit Pull; O-E/#sqrt{E};N bins",40,-10,10)
+	hpost = rt.TH1D("hpost"+tag, "Postfit Pull; O-E/#sqrt{E-VF};N bins",40, -10,10)
+	
+	res = df	
+	res = res.loc[ res['bprefit'] > (10e-5) ]
+	res['Pull_O-E/sqrt(E-VF)'] = (res['data'] - res['bpostfit'])/ ( res['bpostfit'] - res['bpostfit_err']**2 )**(1./2.)
+	res['Pre_O-E/sqrt(E)'] = (res['data'] - res['bprefit'])/ res['bprefit']**(1./2.)
+	res = res.dropna()
+	for pull in res['Pull_O-E/sqrt(E-VF)'].to_numpy():
+		hpost.Fill(pull)
+	for pull in res['Pre_O-E/sqrt(E)'].to_numpy():
+		hpre.Fill(pull)
+	hpost.Fit('gaus',"Q")
+	hpre.Fit('gaus',"Q")
+	tfile.WriteTObject(hpost)
+	tfile.WriteTObject(hpre)
+	
+	
+def doGaussCounts(sigmaCuts, res):
+	NTRIALS = 100
+	ensembledf = pd.DataFrame(columns = ['Trial_Num', 'Sigma Cut', 'Average True Counts '+str(NTRIALS)+' Trials'])
+	for trial in range(0,NTRIALS):
+		gaus = np.random.normal(0, 1.0, size=res.shape[0])
+		gaus = np.absolute(gaus)
+		#print(trial,gaus)
+		for cut in sigmaCuts:
+			ensembledf = ensembledf.append({'Trial_Num' : trial, 'Sigma Cut' : cut, 'Average True Counts '+str(NTRIALS)+' Trials' : gaus[gaus >cut].size }, ignore_index = True)
+			
+	ensembledf = ensembledf.groupby(['Sigma Cut']).mean()
+	ensembledf = ensembledf.reset_index()
+	ensembledf = ensembledf.drop(columns='Trial_Num')
+	#print(ensembledf)
+	return(ensembledf)
+	
+def getSigmaCounts(df):
+	res = df
+	res = res.loc[ res['bprefit'] > (10e-5) ]#remove extraneous bins created by diagnostic 
+	res['Pre_O-E/sqrt(E)'] = (res['data'] - res['bprefit'])/ res['bprefit']**(1./2.)
+	res['Pull_O-E/sqrt(E-VF)'] = (res['data'] - res['bpostfit'])/ ( res['bpostfit'] - res['bpostfit_err']**2 )**(1./2.)
+	res['Post_O-E/sqrt(E)'] = (res['data'] - res['bpostfit'])/  res['bpostfit']**(1./2.)
+	res = res[['RegionName','BinNumber','Pre_O-E/sqrt(E)','Pull_O-E/sqrt(E-VF)','Post_O-E/sqrt(E)','data','bprefit','bpostfit']]
+	res = res.dropna()
+	
+	#count pulls
+	#[0,2] [>2, >2.5, >3, >3.5, >4.0, >5.0, >6.0]
+	sigmaCuts=[0,1,1.5,2,2.5,3,3.5,4,5,6]
+	sigmaCounts = []
+	for cut in sigmaCuts:
+		sigmaCounts.append( res.loc[ res['Pull_O-E/sqrt(E-VF)'].abs() > cut ].shape[0] )
+	print("Pull Counts")
+	#print('{0: <12}'.format("Sigma Cut"), '{0: <12}'.format("N bins > cut") )
+	#for cut,count in zip(sigmaCuts, sigmaCounts):
+	#	print('{0: <12}'.format(cut), '{0: <12}'.format(count) )
+		
+	ensembledf = doGaussCounts(sigmaCuts, res)
+	ensembledf['N bins > cut'] = sigmaCounts
+	print(ensembledf)
+
+def analyzedf(df, countThreshold, n_nuisances, tfile, tag):
 	getStatus(df,countThreshold,n_nuisances)
 	getChisq(df,countThreshold,n_nuisances)
 	getPLike(df)
 	getPull(df)
+	getSigmaCounts(df)
+	getPlots(df, tfile, tag)
     
