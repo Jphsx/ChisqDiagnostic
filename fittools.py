@@ -67,31 +67,48 @@ def getChisq(df, countThreshold,n_nuisances):
 
 	print('{0: <12}'.format("Postfit"),'{0: <12}'.format(round(chi2post,1)), '{0: <12}'.format(round(chi2postNDF,1)), '{0: <12}'.format(round(pvalue_post,2)), '{0: <12}'.format(SelectedBins_post), '{0: <12}'.format(TotalBins), '{0: <12}'.format(countThreshold))
 
+def logXFactorial( x ):
+	SUM=0.
+	for xj in range (1,x+1):
+		SUM = SUM + np.log(xj)
+	return SUM
+
+
+def ComputeCol( col ):
+	d = col.to_numpy()
+	c = []
+	for x in d:
+		c.append(logXFactorial(x))
+		
+	return np.array(c)
+	
 def getPLike(df):
-	poissondf = pd.DataFrame()
-	poissondf['observed'] = df['data']
-	poissondf['expected'] = df['bprefit']
-	poissondf = poissondf.loc[ poissondf['expected'] > (10e-5) ]
-	poissondf['loglam'] = np.log(poissondf['expected'])
-	poissondf['kloglam'] = (-1)* poissondf['observed']*poissondf['loglam']    
-	poissondf['logL'] =  poissondf['kloglam'] + poissondf['expected']
-	sumLogLpre = poissondf['logL'].sum()
+
+	pf = pd.DataFrame()
+	pf['data'] = df['data']
+	pf['bprefit'] = df['bprefit']
+	pf['bpostfit'] = df['bpostfit']
+	pf = pf.loc[ pf['bprefit'] > 10e-5 ]
+
+	pf['A1'] = pf['data']*np.log( pf['bprefit'] )
+	pf['C1'] = ComputeCol( pf['data'] ).tolist()
+	A1 = pf['A1'].sum()
+	B1 = pf['bprefit'].sum()
+	C1 = pf['C1'].sum()
 	
-	poissondf = pd.DataFrame()
-	poissondf['observed'] = df['data']
-	poissondf['expected'] = df['bprefit']
-	poissondf = poissondf.loc[ poissondf['expected'] > (10e-5) ]
-	poissondf['expected'] = df['bpostfit']
-	poissondf['loglam'] = np.log(poissondf['expected'])
-	poissondf['kloglam'] = (-1)* poissondf['observed']*poissondf['loglam']    
-	poissondf['logL'] =  poissondf['kloglam'] + poissondf['expected']
-	sumLogLpost = poissondf['logL'].sum()
+	PrefitLike = A1-B1-C1
 	
-	print("-LogL  E-O*logE")
+	pf['A2'] = pf['data']*np.log( pf['bpostfit'] )
+	A2 = pf['A2'].sum()
+	B2 = pf['bpostfit'].sum()
+	
+	PostfitLike = A2-B2-C1
+	
+	print("Poisson LogL")
 	print('{0: <12}'.format(" "),'{0: <12}'.format("-LogL"))
-	print('{0: <12}'.format("Prefit"),'{0: <12}'.format(round(-sumLogLpre,1)))
+	print('{0: <12}'.format("Prefit"),'{0: <12}'.format(PrefitLike))
 	
-	print('{0: <12}'.format("Postfit"),'{0: <12}'.format(round(-sumLogLpost,1)))
+	print('{0: <12}'.format("Postfit"),'{0: <12}'.format(PostfitLike))
 	
 def getPull(df):
 	res = df
