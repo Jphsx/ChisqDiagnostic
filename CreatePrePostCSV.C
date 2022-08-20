@@ -1,6 +1,6 @@
 
 
-void CreatePrePostCSV(std::string inputDiagnostic, std::string csvname="prepost.csv"){
+void CreatePrePostCSV(std::string inputDiagnostic, std::string csvname="prefit.csv"){
 
 
 	TFile* fitDiagnosticFile = TFile::Open(inputDiagnostic.c_str());
@@ -8,7 +8,7 @@ void CreatePrePostCSV(std::string inputDiagnostic, std::string csvname="prepost.
 	//generate keylist of regions
 	TDirectory* shapes_prefit =(TDirectory*) fitDiagnosticFile->Get("shapes_prefit");
 	TDirectory* shapes_fit_b = (TDirectory*) fitDiagnosticFile->Get("shapes_fit_b");
-	TDirectory* shapes_fit_s = (TDirectory*) fitDiagnosticFile->Get("shapes_fit_s");
+	//TDirectory* shapes_fit_s = (TDirectory*) fitDiagnosticFile->Get("shapes_fit_s");
 	TList* keyList = shapes_prefit->GetListOfKeys();
 	//keyList->Print();
 	//keyList = keyList[0].GetListOfKeys();
@@ -19,24 +19,25 @@ void CreatePrePostCSV(std::string inputDiagnostic, std::string csvname="prepost.
 	TGraphAsymmErrors *data;	
 	ofstream csvfile;
   	csvfile.open (csvname);
-	csvfile<<"RegionName BinNumber sbprefit sbprefit_err sbpostfit sbpostfit_err bprefit bprefit_err bpostfit bpostfit_err data data_err"<<"\n";
+//	csvfile<<"RegionName BinNumber sbprefit sbprefit_err sbpostfit sbpostfit_err bprefit bprefit_err bpostfit bpostfit_err data data_err"<<"\n";
+    csvfile<<"RegionName BinNumber bprefit bprefit_err bpostfit bpostfit_err data data_err"<<"\n";
 	for(int i=0; i<keyList->GetSize(); i++){
 		//do prefit
-		sb_prefit =(TH1F*)  shapes_prefit->Get( (std::string(keyList->At(i)->GetName())+"/total").c_str());	
+		//sb_prefit =(TH1F*)  shapes_prefit->Get( (std::string(keyList->At(i)->GetName())+"/total").c_str());	
 		
 		b_prefit =(TH1F*)  shapes_prefit->Get( (std::string(keyList->At(i)->GetName())+"/total_background").c_str());
 		data =(TGraphAsymmErrors*)  shapes_prefit->Get( (std::string(keyList->At(i)->GetName())+"/data").c_str());
 		
 		//do postfit
-		sb_postfit =(TH1F*)  shapes_fit_s->Get( (std::string(keyList->At(i)->GetName())+"/total").c_str());
+		//sb_postfit =(TH1F*)  shapes_fit_s->Get( (std::string(keyList->At(i)->GetName())+"/total").c_str());
 		b_postfit =(TH1F*)  shapes_fit_b->Get( (std::string(keyList->At(i)->GetName())+"/total_background").c_str());
 
-		Nbins = sb_prefit->GetNbinsX();
+		Nbins = b_prefit->GetNbinsX();
 		//std::cout<<Nbins<<" ";
 		for(int j=1; j<=Nbins; j++){
 			csvfile<<keyList->At(i)->GetName()<<" "<<j<<" ";
-			csvfile<<sb_prefit->GetBinContent(j)<<" "<<sb_prefit->GetBinError(j)<<" ";
-			csvfile<<sb_postfit->GetBinContent(j)<<" "<<sb_postfit->GetBinError(j)<<" ";
+			//csvfile<<sb_prefit->GetBinContent(j)<<" "<<sb_prefit->GetBinError(j)<<" ";
+			//csvfile<<sb_postfit->GetBinContent(j)<<" "<<sb_postfit->GetBinError(j)<<" ";
 			csvfile<<b_prefit->GetBinContent(j)<<" "<<b_prefit->GetBinError(j)<<" ";
 			csvfile<<b_postfit->GetBinContent(j)<<" "<<b_postfit->GetBinError(j)<<" ";
 			csvfile<<data->GetPointY(j-1)<<" "<<data->GetErrorY(j-1)<<"\n";

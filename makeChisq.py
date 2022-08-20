@@ -8,7 +8,24 @@ import sys
 import csv
 #import ROOT
 
-filename = "prepost.csv"
+#filename = "prepost.csv"
+#filename = "pre18.csv"
+#filename = "M4_27_22_allyearFD.csv"
+#filename = "M5_31_22_2016FD.csv"
+#filename = "M_6-2-22_nobtag2016.csv"
+#filename = "M_6-2-22_bshape2016.csv"
+#filename = "M_6-2-22_bnorm2016.csv"
+#filename = "B19-5.csv"
+#filename = "B19-6.csv"
+#filename = "B19-8.csv"
+#filename = "B19-9.csv"
+#filename = "B20-1.csv"
+#filename = "B20-2.csv"
+#filename = "B20-1A.csv"
+#filename = "M_6-27.csv"
+filename = "B_20-3.csv"
+#filename = "B_20-7.csv"
+#filename = "B_20-7_ZFD.csv"
 #filename = str( sys.argv[1] )
 pd.set_option('display.max_colwidth',None)
 pd.set_option('display.max_columns', None)
@@ -66,7 +83,7 @@ def report_PLike(data, mc):
     sumLogL = poissondf['logL'].sum()
     print('{0: <12}'.format(round(-sumLogL,1)))
 
-def getResiduals(RegionName,BinNumber,data,data_error,expected,expected_error,countThreshold,Mode=1,pltname=0):
+def getResiduals(RegionName,BinNumber,data,data_error,expected,expected_error,countThreshold,Mode=1,pltname=0, hist=0) :
     res = pd.DataFrame()
     res['RegionName'] = RegionName
     res['BinNumber'] = BinNumber
@@ -99,12 +116,21 @@ def getResiduals(RegionName,BinNumber,data,data_error,expected,expected_error,co
         print(res[:20])
 
     if(Mode == 2):
-        res['Global Bin Number'] = res.index
-        plt = res.plot.scatter(x='Global Bin Number',y='O-E/sqrt(VE)')
-        plt.set_ylim(-5.7,5.7)
-        plt = plt.get_figure()
-        plt.savefig(pltname)
-    
+        #res['Global Bin Number'] = res.index
+        #plt = res.plot.scatter(x='Global Bin Number',y='O-E/sqrt(VE)')
+        #plt.set_ylim(-5.7,5.7)
+        #plt = plt.get_figure()
+        #plt.savefig(pltname)
+        #print(res)
+        #hist = rt.TH1D(pltname,pltname,40,-6,6)
+        for pull in res['O-E/sqrt(VE)'].to_numpy():
+        	hist.Fill(pull)
+        	#print(pull)
+        #hist.Draw()
+        #print(res)
+		
+
+    	
 
 def getStatus(RegionName,BinNumber,data,expected,countThreshold,n_nuisances):
     totalMC=0
@@ -118,8 +144,8 @@ def getStatus(RegionName,BinNumber,data,expected,countThreshold,n_nuisances):
     totalD = status['observed'].sum()
     print("countThreshold=",countThreshold,"Total Expected:",round(totalMC),"Total Observed:",totalD,"O-E=",round(totalD-totalMC),"nuisances=", n_nuisances)
 
-def makePlot(RegionName,BinNumber,data,data_error,expected,expected_error,countThreshold,Mode=1,pltname=0):
-    getResiduals(RegionName,BinNumber,data,data_error,expected,expected_error,countThreshold,Mode,pltname)
+def makePlot(RegionName,BinNumber,data,data_error,expected,expected_error,countThreshold,Mode=1,pltname=0, hist=0):
+    getResiduals(RegionName,BinNumber,data,data_error,expected,expected_error,countThreshold,Mode,pltname,hist)
 
 
 	
@@ -155,20 +181,52 @@ def evaluate_Chisqs(df,mode,countThreshold,n_nuisances):
     getResiduals(df['RegionName'],df['BinNumber'],df['data'],df['data_err'],df['bpostfit'],df['bpostfit_err'],999999999,1)
     print('Top 20 Leading Low Stat Residuals w.r.t bpostfit')
     getResiduals(df['RegionName'],df['BinNumber'],df['data'],df['data_err'],df['bpostfit'],df['bpostfit_err'],countThreshold)
+    print('Top 20 Leading Residuals w.r.t bprefit')
+    getResiduals(df['RegionName'],df['BinNumber'],df['data'],df['data_err'],df['bprefit'],df['bprefit_err'],999999999,1)
+    print('Top 20 Leading Low Stat Residuals w.r.t bprefit')
+    getResiduals(df['RegionName'],df['BinNumber'],df['data'],df['data_err'],df['bprefit'],df['bprefit_err'],countThreshold)
 
     #generating plots if enabled
     #makePlot(pltname,prefit,postfit,
 
 #####################################################################start
 #DEFINE N NUISANCE
-n_nuisances=146
+n_nuisances=186
 #####
 
 print("------------------Evaluating all bins------------------")
 evaluate_Chisqs(df,0,countThreshold,n_nuisances)
-df['RegionName'],df['BinNumber'],df['data'],df['data_err'],df['bpostfit'],df['bpostfit_err'],countThreshold
-makePlot(df['RegionName'],df['BinNumber'],df['data'],df['data_err'],df['bprefit'],df['bprefit_err'],99999999,2,"all2Lpre.pdf")
-makePlot(df['RegionName'],df['BinNumber'],df['data'],df['data_err'],df['bpostfit'],df['bpostfit_err'],99999999,2,"all2Lpost.pdf")
+df['RegionName'],df['BinNumber'],df['data'],df['data_err'],df['bprefit'],df['bprefit_err'],countThreshold
+
+
+#make a 1d plot of pulls prefit and postfit
+import ROOT as rt
+#outfile = rt.TFile("canvasTemp.root","RECREATE")
+prehist = rt.TH1D("prefitPull","prefitPull",40,-6,6)
+makePlot(df['RegionName'],df['BinNumber'],df['data'],df['data_err'],df['bprefit'],df['bprefit_err'],99999999,2,"prefitPull",prehist)
+#prehist.Draw()
+posthist = rt.TH1D("postfitPull","postfitPull",40,-6,6)
+
+#posthist.SetLineColor(rt.kRed)
+posthist.SetLineWidth(2)
+posthist.SetTitle("Post-fit Pull per Analysis Bin ;(Expected-Observed)/#sigma_{Expected}; N bins")
+makePlot(df['RegionName'],df['BinNumber'],df['data'],df['data_err'],df['bpostfit'],df['bpostfit_err'],99999999,2,"all2Lpost.pdf",posthist)
+
+
+#c1 = rt.TCanvas("c","c")
+posthist.Draw("E")
+posthist.Fit("gaus")
+#fit = posthist.GetFunction("gaus")
+#posthist.Draw("SAME")
+#fit.SetLineColor(rt.kRed)
+#fit.Draw("SAME")
+#outfile.WriteTObject(c1)
+
+#outfile.Close()
+
+
+
+#fit.Draw()
 #slice up our df and look at smaller pieces
 #create rank column
 df['Rank'] = df['RegionSplit'].apply( lambda x:x[2] )
@@ -202,56 +260,6 @@ print("------------------Evaluating all gold bins------------------")
 dfgold = df.loc[ df['Rank'] == 'gold' ]
 evaluate_Chisqs(dfgold,0,countThreshold,n_nuisances)
 
-'''
-#create criteria 1 column 'Lepton configuration'
-dfgold['Lconfig'] = dfgold['RegionSplit'].apply( lambda x:x[1] )
-print('\n')
-print("------------------Evaluating 0j flavor combination gold bins------------------")
-
-OSelmu = dfgold.loc[ dfgold['Lconfig'] == 'OSelmu' ]
-OSelel = dfgold.loc[ dfgold['Lconfig'] == 'OSelel' ]
-OSmumu = dfgold.loc[ dfgold['Lconfig'] == 'OSmumu' ]
-SSll = dfgold.loc[ dfgold['Lconfig'] == 'SS']
-llSV = dfgold.loc[ dfgold['Lconfig'] == 'll']
-print('\n')
-print("------------------Evaluating OSelmu gold bins------------------")
-evaluate_Chisqs(OSelmu,0,countThreshold,n_nuisances)
-
-print('\n')
-print("------------------Evaluating OSelel gold bins------------------")
-evaluate_Chisqs(OSelel,0,countThreshold,n_nuisances)
-
-print('\n')
-print("------------------Evaluating OSmumu gold bins------------------")
-evaluate_Chisqs(OSmumu,0,countThreshold,n_nuisances)
-
-print('\n')
-print("------------------Evaluating SS gold bins------------------")
-evaluate_Chisqs(SSll,0,countThreshold,n_nuisances)
-
-print('\n')
-print("------------------Evaluating llSVeta gold bins------------------")
-evaluate_Chisqs(llSV,0,countThreshold,n_nuisances)
-
-print('\n')
-print("------------------Evaluating 0-1-2j gold bins------------------")
-dfgold['NJ'] = dfgold['RegionSplit'].apply( lambda x:x[3] )
-j0s = dfgold.loc[ (dfgold['NJ'] == '0jge1svS') | (dfgold['NJ'] == '0j0svS') ] 
-j1s = dfgold.loc[ (dfgold['NJ'] == '1j0bS') | (dfgold['NJ'] == '1j1bS') ]
-j2s = dfgold.loc[ (dfgold['NJ'] == 'ge2j0bS') | (dfgold['NJ'] == 'ge2jge1bS') ]
-
-print('\n')
-print("------------------Evaluating 0j gold bins------------------")
-evaluate_Chisqs(j0s,0,countThreshold,n_nuisances)
-
-print('\n')
-print("------------------Evaluating 1j gold bins------------------")
-evaluate_Chisqs(j1s,0,countThreshold,n_nuisances)
-
-print('\n')
-print("------------------Evaluating 2j gold bins------------------")
-evaluate_Chisqs(j2s,0,countThreshold,n_nuisances)
-'''
 print('\n')
 print("Evaluating all silver bins")
 dfslvr = df.loc[ df['Rank'] == 'slvr' ]
@@ -261,5 +269,7 @@ print('\n')
 print("Evaluating all bronze bins")
 dfbron = df.loc[ df['Rank'] == 'bron' ]
 evaluate_Chisqs(dfbron,0,countThreshold,n_nuisances)
+
+
 
 

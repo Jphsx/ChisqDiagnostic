@@ -14,11 +14,16 @@ pd.set_option('display.max_rows', None)
 
 
 ##### Input FD csv file and important params#####
-filename = "B_20-7_ZFD.csv"#"B_20-3.csv"
+filename = "B_20-7.csv" #"B_20-7_ZFD.csv"#"B_20-3.csv"
 countThreshold = 5 #Chisq min stat criteria
-n_nuisances=186 #hardcoded number of nuisances
-outfile = "B_20-7_ZFD.root"
+#n_nuisances=186 #hardcoded number of nuisances
+#outfile = "B_20-7.root"#"B_20-7_ZFD.root"
+filename = sys.argv[1]
+outfile = sys.argv[3]
+n_nuisances = float(sys.argv[2])
 #############################
+
+
 
 df = pd.read_csv(filename, index_col=None, header=0, delimiter=" ")
 #df manipulation for g/s/b separation
