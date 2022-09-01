@@ -45,7 +45,7 @@ def getChisq(df, countThreshold,n_nuisances):
 	#chipre['ratio'] = chipre['sqdiff']/chipre['variance_pre']
 	chipre['ratio'] = chipre['sqdiff']/chipre['expected_pre']
 	chi2pre = chipre['ratio'].sum()
-	chi2preNDF = chi2pre/(float(SelectedBins_pre))
+	chi2preNDF = chi2pre/(float(SelectedBins_pre-n_nuisances))
 	pvalue_pre = 1- stats.chi2.cdf(chi2pre,SelectedBins_pre)
     
     #calculate columns for post chisq
@@ -56,7 +56,7 @@ def getChisq(df, countThreshold,n_nuisances):
 	chipost['ratio'] = chipost['sqdiff']/chipost['expected_post']
 	#chipost['ratio'] = chipost['sqdiff']/chidf['variance_post']
 	chi2post = chipost['ratio'].sum()
-	chi2postNDF = chi2post/(float(SelectedBins_post))
+	chi2postNDF = chi2post/(float(SelectedBins_post-n_nuisances))
 	pvalue_post = 1- stats.chi2.cdf(chi2post,SelectedBins_post)
     
 	print("Chi2  (O-E)^2 / E")
@@ -69,7 +69,7 @@ def getChisq(df, countThreshold,n_nuisances):
 
 def logXFactorial( x ):
 	SUM=0.
-	for xj in range (1,x+1):
+	for xj in range (1,int(x)+1):
 		SUM = SUM + np.log(xj)
 	return SUM
 
@@ -114,28 +114,28 @@ def getPull(df):
 	res = df
 	res = res.loc[ res['bprefit'] > (10e-5) ]#remove extraneous bins created by diagnostic 
 	res['Pre_O-E/sqrt(E)'] = (res['data'] - res['bprefit'])/ res['bprefit']**(1./2.)
-	res['Pull_O-E/sqrt(E-VF)'] = (res['data'] - res['bpostfit'])/ ( res['bpostfit'] - res['bpostfit_err']**2 )**(1./2.)
+	res['Pull_O-E/sqrt(E+VF)'] = (res['data'] - res['bpostfit'])/ ( res['bpostfit'] + res['bpostfit_err']**2 )**(1./2.)
 	res['Post_O-E/sqrt(E)'] = (res['data'] - res['bpostfit'])/  res['bpostfit']**(1./2.)
-	res = res[['RegionName','BinNumber','Pre_O-E/sqrt(E)','Pull_O-E/sqrt(E-VF)','Post_O-E/sqrt(E)','data','bprefit','bpostfit']]
+	res = res[['RegionName','BinNumber','Pre_O-E/sqrt(E)','Pull_O-E/sqrt(E+VF)','Post_O-E/sqrt(E)','data','bprefit','bpostfit']]
     
-	print('Top 10 Leading normalized residuals sorted by pull') 
-	res = res.sort_values(by='Pull_O-E/sqrt(E-VF)', key=pd.Series.abs, ascending=False)
+	print('Top 10 Leading normalized residuals sorted by pull O-E/sqrt(E+VF)') 
+	res = res.sort_values(by='Pull_O-E/sqrt(E+VF)', key=pd.Series.abs, ascending=False)
 	print(res[:10])
-	print('Top 10 Leading normalized residuals sorted by pre')    
-	res = res.sort_values(by='Pre_O-E/sqrt(E)',key=pd.Series.abs, ascending=False)
+	print('Top 10 Leading normalized residuals sorted by O-E/sqrt(E)')    
+	res = res.sort_values(by='Post_O-E/sqrt(E)',key=pd.Series.abs, ascending=False)
 	print(res[:10])
     
 def getPlots(df,tfile,tag):
 	rt.gStyle.SetOptFit(1)
 	hpre = rt.TH1D("hpre"+tag, "Prefit Pull; O-E/#sqrt{E};N bins",40,-10,10)
-	hpost = rt.TH1D("hpost"+tag, "Postfit Pull; O-E/#sqrt{E-VF};N bins",40, -10,10)
+	hpost = rt.TH1D("hpost"+tag, "Postfit Pull; O-E/#sqrt{E+VF};N bins",40, -10,10)
 	
 	res = df	
 	res = res.loc[ res['bprefit'] > (10e-5) ]
-	res['Pull_O-E/sqrt(E-VF)'] = (res['data'] - res['bpostfit'])/ ( res['bpostfit'] - res['bpostfit_err']**2 )**(1./2.)
+	res['Pull_O-E/sqrt(E+VF)'] = (res['data'] - res['bpostfit'])/ ( res['bpostfit'] + res['bpostfit_err']**2 )**(1./2.)
 	res['Pre_O-E/sqrt(E)'] = (res['data'] - res['bprefit'])/ res['bprefit']**(1./2.)
 	res = res.dropna()
-	for pull in res['Pull_O-E/sqrt(E-VF)'].to_numpy():
+	for pull in res['Pull_O-E/sqrt(E+VF)'].to_numpy():
 		hpost.Fill(pull)
 	for pull in res['Pre_O-E/sqrt(E)'].to_numpy():
 		hpre.Fill(pull)
@@ -165,9 +165,9 @@ def getSigmaCounts(df):
 	res = df
 	res = res.loc[ res['bprefit'] > (10e-5) ]#remove extraneous bins created by diagnostic 
 	res['Pre_O-E/sqrt(E)'] = (res['data'] - res['bprefit'])/ res['bprefit']**(1./2.)
-	res['Pull_O-E/sqrt(E-VF)'] = (res['data'] - res['bpostfit'])/ ( res['bpostfit'] - res['bpostfit_err']**2 )**(1./2.)
+	res['Pull_O-E/sqrt(E+VF)'] = (res['data'] - res['bpostfit'])/ ( res['bpostfit'] + res['bpostfit_err']**2 )**(1./2.)
 	res['Post_O-E/sqrt(E)'] = (res['data'] - res['bpostfit'])/  res['bpostfit']**(1./2.)
-	res = res[['RegionName','BinNumber','Pre_O-E/sqrt(E)','Pull_O-E/sqrt(E-VF)','Post_O-E/sqrt(E)','data','bprefit','bpostfit']]
+	res = res[['RegionName','BinNumber','Pre_O-E/sqrt(E)','Pull_O-E/sqrt(E+VF)','Post_O-E/sqrt(E)','data','bprefit','bpostfit']]
 	res = res.dropna()
 	
 	#count pulls
@@ -175,7 +175,7 @@ def getSigmaCounts(df):
 	sigmaCuts=[0,1,1.5,2,2.5,3,3.5,4,5,6]
 	sigmaCounts = []
 	for cut in sigmaCuts:
-		sigmaCounts.append( res.loc[ res['Pull_O-E/sqrt(E-VF)'].abs() > cut ].shape[0] )
+		sigmaCounts.append( res.loc[ res['Pull_O-E/sqrt(E+VF)'].abs() > cut ].shape[0] )
 	print("Pull Counts")
 	#print('{0: <12}'.format("Sigma Cut"), '{0: <12}'.format("N bins > cut") )
 	#for cut,count in zip(sigmaCuts, sigmaCounts):
