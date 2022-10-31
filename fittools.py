@@ -5,6 +5,7 @@ import glob
 import math
 import sys
 import ROOT as rt
+from ROOT import TMath as tm
 import csv
 
 
@@ -109,40 +110,123 @@ def getPLike(df):
 	print('{0: <12}'.format("Prefit"),'{0: <12}'.format(PrefitLike))
 	
 	print('{0: <12}'.format("Postfit"),'{0: <12}'.format(PostfitLike))
-	
-def getPull(df):
+
+
+
+def getPoissonPull(MUB,NOBS,SIGMAB,FRACERROR, rg, NGENERATED):
+	nuppertail = 0;
+	nlowertail = 0;
+	for i in range(1,NGENERATED):
+		mu = MUB;
+		if(FRACERROR > 1.0e-4):
+			mu = rg.Gaus(MUB, SIGMAB)  # Choose Poisson mean, mu, from Gaussian with mean and rms of MUB and SIGMAB
+        
+			n = rg.Poisson(mu)         # Generate Poisson distributed random number, n, based on Poisson mean of mu  
+		if(n >= NOBS):
+			nuppertail =nuppertail+1;       # Count toys with n exceeding or equal to the observed counts
+		if(n <= NOBS):
+			nlowertail =nlowertail+1;       # Count toys with n less than or equalt to the observed counts
+     
+	ppull=0
+	err = 0
+	if(NOBS >= MUB):
+		pvalue = float(nuppertail)/float(NGENERATED)
+		ppull = tm.NormQuantile(1.0-pvalue)
+		err= math.sqrt(pvalue*(1.0-pvalue)/float(NGENERATED)); 
+	else:
+  		pvalue = float(nlowertail)/float(NGENERATED)
+  		ppull = -tm.NormQuantile(1.0-pvalue)
+  		err= math.sqrt(pvalue*(1.0-pvalue)/float(NGENERATED));
+   
+	return [ppull,err]
+    
+def getPoissonCol(df):
+
+  # res = df
+  # res["MUB"] = df['bpostfit']
+  # res["NOBS"] = df['data']
+  # res["SIGMAB"] = df['bpostfit_err']
+  # res["FRACERROR"] = res["SIGMAB"]/res["MUB"]
+	seed = 4359
+	rg = rt.TRandom3(seed)
+	#NGENERATED = 10000000
+	NGENERATED = 1000000
+  
+	MUBcol = df["bpostfit"].to_numpy()
+	NOBScol = df["data"].to_numpy()
+	SIGMABcol = df['bpostfit_err'].to_numpy()
+	FRACERRORcol = (df['bpostfit_err']/df['bpostfit']).to_numpy()
+	c = []
+	err = []
+	for MUB,NOBS,SIGMAB,FRACERROR in zip(MUBcol,NOBScol,SIGMABcol,FRACERRORcol):
+		temp = getPoissonPull(MUB,NOBS,SIGMAB,FRACERROR,rg,NGENERATED)
+		c.append(temp[0] )
+		err.append(temp[1] )
+		
+	return [np.array(c), np.array(err)]
+
+def getPull(df, DO_POISSON):
+
+	#adding Poisson treatment, should be able to toggle this
+
 	res = df
 	res = res.loc[ res['bprefit'] > (10e-5) ]#remove extraneous bins created by diagnostic 
 	res['Pre_O-E/sqrt(E)'] = (res['data'] - res['bprefit'])/ res['bprefit']**(1./2.)
 	res['Pull_O-E/sqrt(E+VF)'] = (res['data'] - res['bpostfit'])/ ( res['bpostfit'] + res['bpostfit_err']**2 )**(1./2.)
 	res['Post_O-E/sqrt(E)'] = (res['data'] - res['bpostfit'])/  res['bpostfit']**(1./2.)
-	res = res[['RegionName','BinNumber','Pre_O-E/sqrt(E)','Pull_O-E/sqrt(E+VF)','Post_O-E/sqrt(E)','data','bprefit','bpostfit']]
+	
+	if DO_POISSON == True:
+		temp = getPoissonCol(res)
+		res['PoissonZscore'] = (temp[0]).tolist()
+		res['PoissonErr'] = (temp[1]).tolist()
+		res = res[['RegionName','BinNumber','Pre_O-E/sqrt(E)','Pull_O-E/sqrt(E+VF)','PoissonZscore','PoissonErr','data','bprefit','bpostfit']]
+	else:
+		res = res[['RegionName','BinNumber','Pre_O-E/sqrt(E)','Pull_O-E/sqrt(E+VF)','Post_O-E/sqrt(E)','data','bprefit','bpostfit']]
     
 	print('Top 10 Leading normalized residuals sorted by pull O-E/sqrt(E+VF)') 
 	res = res.sort_values(by='Pull_O-E/sqrt(E+VF)', key=pd.Series.abs, ascending=False)
 	print(res[:10])
-	print('Top 10 Leading normalized residuals sorted by O-E/sqrt(E)')    
-	res = res.sort_values(by='Post_O-E/sqrt(E)',key=pd.Series.abs, ascending=False)
-	print(res[:10])
+	#print(res)
+	if DO_POISSON == True:
+		print('Top 10 Leading Poisson Pulls')
+		res = res.sort_values(by='PoissonZscore', key=pd.Series.abs, ascending=False)
+		print(res[:10])
+	else:
+		print('Top 10 Leading normalized residuals sorted by pre O-E/sqrt(E)')    
+		res = res.sort_values(by='Pre_O-E/sqrt(E)',key=pd.Series.abs, ascending=False)
+		print(res[:10])
+	
+	
+	return res
     
-def getPlots(df,tfile,tag):
+def getPlots(df,tfile,tag,DO_POISSON):
 	rt.gStyle.SetOptFit(1)
 	hpre = rt.TH1D("hpre"+tag, "Prefit Pull; O-E/#sqrt{E};N bins",40,-10,10)
 	hpost = rt.TH1D("hpost"+tag, "Postfit Pull; O-E/#sqrt{E+VF};N bins",40, -10,10)
+	hpoisson = rt.TH1D("hpois"+tag," Postfit Poisson Pull; P;N bins",40,-10,10)
+	
 	
 	res = df	
-	res = res.loc[ res['bprefit'] > (10e-5) ]
-	res['Pull_O-E/sqrt(E+VF)'] = (res['data'] - res['bpostfit'])/ ( res['bpostfit'] + res['bpostfit_err']**2 )**(1./2.)
-	res['Pre_O-E/sqrt(E)'] = (res['data'] - res['bprefit'])/ res['bprefit']**(1./2.)
-	res = res.dropna()
+
+	#res = res.loc[ res['bprefit'] > (10e-5) ]
+	#res['Pull_O-E/sqrt(E+VF)'] = (res['data'] - res['bpostfit'])/ ( res['bpostfit'] + res['bpostfit_err']**2 )**(1./2.)
+	#res['Pre_O-E/sqrt(E)'] = (res['data'] - res['bprefit'])/ res['bprefit']**(1./2.)
+	#res = res.dropna()
 	for pull in res['Pull_O-E/sqrt(E+VF)'].to_numpy():
 		hpost.Fill(pull)
 	for pull in res['Pre_O-E/sqrt(E)'].to_numpy():
 		hpre.Fill(pull)
+	if DO_POISSON == True:
+		for pull in res['PoissonZscore'].to_numpy():
+			hpoisson.Fill(pull)
+		
 	hpost.Fit('gaus',"Q")
 	hpre.Fit('gaus',"Q")
+	hpoisson.Fit('gaus',"Q")
 	tfile.WriteTObject(hpost)
 	tfile.WriteTObject(hpre)
+	if DO_POISSON == True:
+		tfile.WriteTObject(hpoisson)
 	
 	
 def doGaussCounts(sigmaCuts, res):
@@ -161,22 +245,30 @@ def doGaussCounts(sigmaCuts, res):
 	#print(ensembledf)
 	return(ensembledf)
 	
-def getSigmaCounts(df):
+def getSigmaCounts(df, DO_POISSON):
 	res = df
-	res = res.loc[ res['bprefit'] > (10e-5) ]#remove extraneous bins created by diagnostic 
-	res['Pre_O-E/sqrt(E)'] = (res['data'] - res['bprefit'])/ res['bprefit']**(1./2.)
-	res['Pull_O-E/sqrt(E+VF)'] = (res['data'] - res['bpostfit'])/ ( res['bpostfit'] + res['bpostfit_err']**2 )**(1./2.)
-	res['Post_O-E/sqrt(E)'] = (res['data'] - res['bpostfit'])/  res['bpostfit']**(1./2.)
-	res = res[['RegionName','BinNumber','Pre_O-E/sqrt(E)','Pull_O-E/sqrt(E+VF)','Post_O-E/sqrt(E)','data','bprefit','bpostfit']]
-	res = res.dropna()
+	#res = res.loc[ res['bprefit'] > (10e-5) ]#remove extraneous bins created by diagnostic 
+	#res['Pre_O-E/sqrt(E)'] = (res['data'] - res['bprefit'])/ res['bprefit']**(1./2.)
+	#res['Pull_O-E/sqrt(E+VF)'] = (res['data'] - res['bpostfit'])/ ( res['bpostfit'] + res['bpostfit_err']**2 )**(1./2.)
+	#res['Post_O-E/sqrt(E)'] = (res['data'] - res['bpostfit'])/  res['bpostfit']**(1./2.)
+	#res = res[['RegionName','BinNumber','Pre_O-E/sqrt(E)','Pull_O-E/sqrt(E+VF)','Post_O-E/sqrt(E)','data','bprefit','bpostfit']]
+	#res = res.dropna()
 	
 	#count pulls
 	#[0,2] [>2, >2.5, >3, >3.5, >4.0, >5.0, >6.0]
 	sigmaCuts=[0,1,1.5,2,2.5,3,3.5,4,5,6]
 	sigmaCounts = []
+	
 	for cut in sigmaCuts:
-		sigmaCounts.append( res.loc[ res['Pull_O-E/sqrt(E+VF)'].abs() > cut ].shape[0] )
-	print("Pull Counts")
+		if DO_POISSON == True:
+			sigmaCounts.append(res.loc[ res['PoissonZscore'].abs() > cut ].shape[0])
+		else:
+			sigmaCounts.append( res.loc[ res['Pull_O-E/sqrt(E+VF)'].abs() > cut ].shape[0] )
+	
+	pstring = ""
+	if DO_POISSON == True:
+		pstring = "Poisson Corrected"
+	print(pstring+" Pull Counts")
 	#print('{0: <12}'.format("Sigma Cut"), '{0: <12}'.format("N bins > cut") )
 	#for cut,count in zip(sigmaCuts, sigmaCounts):
 	#	print('{0: <12}'.format(cut), '{0: <12}'.format(count) )
@@ -185,11 +277,14 @@ def getSigmaCounts(df):
 	ensembledf['N bins > cut'] = sigmaCounts
 	print(ensembledf)
 
-def analyzedf(df, countThreshold, n_nuisances, tfile, tag):
+def analyzedf(df, countThreshold, n_nuisances, tfile, tag, DO_POISSON):
 	getStatus(df,countThreshold,n_nuisances)
 	getChisq(df,countThreshold,n_nuisances)
 	getPLike(df)
-	getPull(df)
-	getSigmaCounts(df)
-	getPlots(df, tfile, tag)
+	pulldf = getPull(df,DO_POISSON)
+	getSigmaCounts(pulldf,DO_POISSON)
+	getPlots(pulldf,tfile,tag,DO_POISSON)
+	#getSigmaCounts(df,DO_POISSON)
+	#getPlots(df, tfile, tag)
+	return pulldf
     
